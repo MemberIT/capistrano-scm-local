@@ -20,8 +20,8 @@ class Capistrano::Local < Capistrano::SCM
             Capistrano::Local::ScpUploader.new(context)
           when :torrent
             Capistrano::Local::TorrentUploader.new(context)
-          # when :rsync
-          #   Capistrano::Local::RsyncUploader.new(context)
+           when :rsync
+             Capistrano::Local::RsyncUploader.new(context)
           else
             raise "Unknown scm_local_upload_strategy #{fetch(:scm_local_uploader).inspect}"
         end
@@ -139,55 +139,55 @@ class Capistrano::Local < Capistrano::SCM
     end
   end
 
-  # class RsyncUploader < UploaderBase
-  #   def initialize(context)
-  #     super(context)
-  #   end
-  #
-  #   def check
-  #     unless test!(:which, 'rsync')
-  #       run_locally do
-  #         error 'Selected rsync transport but rsync binary was not found.'
-  #       end
-  #       return false
-  #     end
-  #
-  #     true
-  #   end
-  #
-  #   def upload(local_path, remote_path)
-  #     hosts = release_roles(@roles_filter)
-  #     hostlist = hosts.
-  #         sort { |h1,h2| (h1.properties.fetch(:primary, false) == h2.properties.fetch(:primary, false)) ? h1.hostname <=> h2.hostname : h1.properties.fetch(:primary, false) ? -1 : 1 }.
-  #         map{|host| puts "#{host.inspect}"; "#{host.user}@#{host.hostname}" }.
-  #         join(',')
-  #     log_dir = fetch(:tmp_dir, Dir::tmpdir()) + '/capistrano/horde'
-  #     remote_auxiliary_path = nil
-  #
-  #     on primary(@roles_filter) do
-  #       tmp_dir = Pathname.new(capture :dirname, '$(mktemp -u)')
-  #       remote_auxiliary_path = tmp_dir.join('capistrano').join(fetch(:application) + '-auxiliary')
-  #     end
-  #
-  #     run_locally do
-  #       debug "Uploading #{local_path} to #{hostlist}:#{remote_path} with torrent using auxiliary path #{remote_auxiliary_path}"
-  #     end
-  #
-  #     on hosts do
-  #       execute :mkdir, '-p', remote_auxiliary_path
-  #     end
-  #
-  #     run_locally do
-  #       execute :mkdir, '-p', log_dir
-  #       log = capture :horde, local_path, remote_auxiliary_path, '--hostlist', hostlist, '--log-dir', log_dir, '2>&1'
-  #       halt "Upload failed! See logs in #{log_dir} or stdout:\n" + log if log.include?('FAILED with code')
-  #     end
-  #
-  #     on hosts do
-  #       execute :cp, '-r', File.join(remote_auxiliary_path, '*'), remote_path
-  #     end
-  #   end
-  # end
+  class RsyncUploader < UploaderBase
+    def initialize(context)
+      super(context)
+    end
+ 
+    def check
+      unless test!(:which, 'rsync')
+        run_locally do
+          error 'Selected rsync transport but rsync binary was not found.'
+        end
+        return false
+      end
+ 
+      true
+    end
+ 
+    def upload(local_path, remote_path)
+      hosts = release_roles(@roles_filter)
+      hostlist = hosts.
+          sort { |h1,h2| (h1.properties.fetch(:primary, false) == h2.properties.fetch(:primary, false)) ? h1.hostname <=> h2.hostname : h1.properties.fetch(:primary, false) ? -1 : 1 }.
+          map{|host| puts "#{host.inspect}"; "#{host.user}@#{host.hostname}" }.
+          join(',')
+      log_dir = fetch(:tmp_dir, Dir::tmpdir()) + '/capistrano/horde'
+      remote_auxiliary_path = nil
+ 
+      on primary(@roles_filter) do
+        tmp_dir = Pathname.new(capture :dirname, '$(mktemp -u)')
+        remote_auxiliary_path = tmp_dir.join('capistrano').join(fetch(:application) + '-auxiliary')
+      end
+ 
+      run_locally do
+        debug "Uploading #{local_path} to #{hostlist}:#{remote_path} with torrent using auxiliary path #{remote_auxiliary_path}"
+      end
+ 
+      on hosts do
+        execute :mkdir, '-p', remote_auxiliary_path
+      end
+ 
+      run_locally do
+        execute :mkdir, '-p', log_dir
+        log = capture :horde, local_path, remote_auxiliary_path, '--hostlist', hostlist, '--log-dir', log_dir, '2>&1'
+        halt "Upload failed! See logs in #{log_dir} or stdout:\n" + log if log.include?('FAILED with code')
+      end
+ 
+      on hosts do
+        execute :cp, '-r', File.join(remote_auxiliary_path, '*'), remote_path
+      end
+    end
+  end
 
   class TarPacker
     def initialize
