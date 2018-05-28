@@ -71,11 +71,21 @@ class Capistrano::Local < Capistrano::SCM
         end
       end
 
-      # uploading and unpacking
-      on release_roles :all do |host|
+      # uploading
+      run_locally do
         debug "Uploading #{archive} to #{host}:#{release_path}"
-        upload! archive, releases_path, verbose: false
+        roles_filter = fetch :scm_local_roles_filter, :all
+        deploy_user = fetch :scm_local_deploy_user, 'deploy'
+        hosts = release_roles(roles_filter)
+        hosts.each do |host|
+          execute :scp, archive, "#{deploy_user}@#{host}:#{releases_path}"
+        end
+      end
+
+      # unpacking
+      on release_roles :all do |host|
         remote_archive = File.join(releases_path, File.basename(archive))
+        debug "Unpacking #{archive} to #{host}:#{remote_archive}"
         execute :tar, "x#{compression_flag}f", remote_archive, '-C', release_path
         execute :rm, '-f', remote_archive
       end
